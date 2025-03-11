@@ -15,9 +15,17 @@ options = webdriver.FirefoxOptions()
 options.add_argument("--headless")  
 options.add_argument("--no-sandbox")  
 options.add_argument("--disable-dev-shm-usage")  
+options.add_argument("--log-level=3")  # Reduce logging noise
+options.add_argument("--window-size=1920,1080")  # Set a fixed window size
 
 service = Service(GeckoDriverManager().install())
-driver = webdriver.Firefox(service=service, options=options)
+try:
+    driver = webdriver.Firefox(service=service, options=options)
+    print("✅ Firefox WebDriver started successfully!")
+except Exception as e:
+    print(f"❌ Error starting Firefox WebDriver: {e}")
+    exit(1)  # Stop execution if WebDriver fails
+
 
 
 # ✅ Open login page
