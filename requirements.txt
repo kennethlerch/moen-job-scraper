@@ -4,5 +4,3 @@ pandas
 gspread
 google-auth
 streamlit
-undetected-chromedriver
-undetected-chromedriver==3.5.4
