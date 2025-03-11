@@ -1,6 +1,10 @@
+
+
+
+
+
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
-from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -9,6 +13,7 @@ from google.oauth2.service_account import Credentials
 import pandas as pd
 import time
 import re
+import shutil  # For finding the system-installed GeckoDriver
 
 ### ✅ SETUP SELENIUM ###
 options = webdriver.FirefoxOptions()
@@ -18,16 +23,16 @@ options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--log-level=3")  # Reduce logging noise
 options.add_argument("--window-size=1920,1080")  # Set a fixed window size
 
-service = Service(GeckoDriverManager("v0.33.0").install())  # Manually set a stable version
+# ✅ Use Pre-Installed GeckoDriver Instead of Downloading
+GECKODRIVER_PATH = shutil.which("geckodriver")
 
-try:
+if GECKODRIVER_PATH:
+    service = Service(GECKODRIVER_PATH)
     driver = webdriver.Firefox(service=service, options=options)
-    print("✅ Firefox WebDriver started successfully!")
-except Exception as e:
-    print(f"❌ Error starting Firefox WebDriver: {e}")
-    exit(1)  # Stop execution if WebDriver fails
-
-
+    print("✅ Using pre-installed GeckoDriver")
+else:
+    print("❌ GeckoDriver not found! Exiting.")
+    exit(1)
 
 # ✅ Open login page
 driver.get("https://pro.proconnect.com/login")
@@ -173,8 +178,4 @@ else:
     print("⚠️ No new 'Assign Pro' jobs found.")
 
 driver.quit()
-
-
-
-
 
