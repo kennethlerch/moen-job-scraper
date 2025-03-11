@@ -1,52 +1,32 @@
-import logging
 from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 import time
 import re
-import shutil  # For finding the system-installed GeckoDriver
-
-# ✅ Configure Logging
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-log = logging.getLogger()
 
 ### ✅ SETUP SELENIUM ###
-options = webdriver.FirefoxOptions()
-options.add_argument("--headless")
-options.add_argument("--no-sandbox")
-options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--log-level=3")  # Reduce logging noise
-options.add_argument("--window-size=1920,1080")  # Set a fixed window size
+options = Options()
+options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_argument(
+    "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+)
+options.add_experimental_option("excludeSwitches", ["enable-automation"])
+options.add_experimental_option("useAutomationExtension", False)
 
-# ✅ Use Pre-Installed GeckoDriver Instead of Downloading
-GECKODRIVER_PATH = shutil.which("geckodriver")
+# ✅ Start ChromeDriver
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service, options=options)
 
-if GECKODRIVER_PATH:
-    service = Service(GECKODRIVER_PATH)
-    driver = webdriver.Firefox(service=service, options=options)
-    log.info("✅ Using pre-installed GeckoDriver")
-else:
-    log.error("❌ GeckoDriver not found! Exiting.")
-    exit(1)
-
-# ✅ Open login page with timeout
-try:
-    driver.set_page_load_timeout(30)  # Prevent infinite waiting
-    driver.get("https://pro.proconnect.com/login")
-    log.info("✅ Opened login page")
-    time.sleep(10)
-except Exception as e:
-    log.error(f"❌ Page load timeout: {e}")
-    driver.quit()
-    exit(1)
+# ✅ Open login page
+driver.get("https://pro.proconnect.com/login")
+time.sleep(10)
 
 # ✅ Click "Sign In" button
 try:
@@ -54,12 +34,10 @@ try:
         EC.element_to_be_clickable((By.CLASS_NAME, "button-interactive"))
     )
     sign_in_button.click()
-    log.info("✅ Clicked 'Sign In' button!")
+    print("✅ Clicked 'Sign In' button!")
     time.sleep(3)
-except Exception as e:
-    log.error(f"❌ Failed to click 'Sign In' button: {e}")
-    driver.quit()
-    exit(1)
+except Exception:
+    print("❌ Failed to click 'Sign In' button!")
 
 # ✅ Enter login credentials
 try:
@@ -72,23 +50,19 @@ try:
     username_field.send_keys("office@gardnerplumbingco.com")
     password_field.send_keys("Job13:14!")
     login_button.click()
-    log.info("✅ Entered login credentials and clicked 'Log In'!")
+    print("✅ Entered login credentials and clicked 'Log In'!")
     time.sleep(60)
-except Exception as e:
-    log.error(f"❌ Failed to enter credentials: {e}")
-    driver.quit()
-    exit(1)
+except Exception:
+    print("❌ Failed to enter credentials!")
 
 # ✅ Wait for jobs page to load
 try:
     WebDriverWait(driver, 60).until(
         EC.presence_of_element_located((By.TAG_NAME, "body"))
     )
-    log.info("✅ Jobs page loaded successfully!")
-except Exception as e:
-    log.error(f"❌ Jobs page did not load in time: {e}")
-    driver.quit()
-    exit(1)
+    print("✅ Assuming jobs page is loaded!")
+except Exception:
+    print("❌ Jobs page did not load in time.")
 
 ### ✅ FIND "ASSIGN PRO" JOBS & CLICK TO OPEN ###
 jobs_data = []
@@ -101,8 +75,6 @@ time.sleep(5)
 def get_job_list():
     """ Re-fetches the job elements to avoid stale element errors """
     return driver.find_elements(By.XPATH, "//div[contains(@class, '_statusPill_dzcst_42') and contains(text(), 'Assign Pro')]")
-
-log.info("✅ Starting job extraction process...")
 
 job_elements = get_job_list()
 
@@ -161,14 +133,14 @@ for index in range(len(job_elements)):
             "Job Description": job_description
         })
 
-        log.info(f"✅ Extracted details: {customer_name} - {customer_phone}")
+        print(f"✅ Extracted details: {customer_name} - {customer_phone}")
 
         # ✅ Return to job listings
         driver.get(base_url)
         time.sleep(5)
 
     except Exception as e:
-        log.error(f"⚠️ Error processing job {index+1}: {e}")
+        print(f"⚠️ Error processing job {index+1}: {e}")
 
 ### ✅ GOOGLE SHEETS INTEGRATION ###
 SERVICE_ACCOUNT_FILE = "front-door-pro-service-pro-8c1d8344b734.json"
@@ -191,9 +163,9 @@ new_jobs_data = [job for job in jobs_data if job["Work Order"] not in existing_w
 if new_jobs_data:
     new_jobs_df = pd.DataFrame(new_jobs_data)
     sheet.append_rows(new_jobs_df.values.tolist())
-    log.info(f"✅ {len(new_jobs_df)} new 'Assign Pro' jobs added to Google Sheets!")
+    print(f"✅ {len(new_jobs_df)} new 'Assign Pro' jobs added to Google Sheets!")
 else:
-    log.info("⚠️ No new 'Assign Pro' jobs found.")
+    print("⚠️ No new 'Assign Pro' jobs found.")
 
 driver.quit()
 
