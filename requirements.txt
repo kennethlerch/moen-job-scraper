@@ -1,6 +1,5 @@
 selenium
-webdriver-manager
-pandas
 gspread
 google-auth
+pandas
 streamlit
