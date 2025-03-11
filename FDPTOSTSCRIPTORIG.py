@@ -18,7 +18,8 @@ options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--log-level=3")  # Reduce logging noise
 options.add_argument("--window-size=1920,1080")  # Set a fixed window size
 
-service = Service(GeckoDriverManager().install())
+service = Service(GeckoDriverManager("v0.33.0").install())  # Manually set a stable version
+
 try:
     driver = webdriver.Firefox(service=service, options=options)
     print("✅ Firefox WebDriver started successfully!")
